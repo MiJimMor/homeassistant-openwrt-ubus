@@ -1,6 +1,7 @@
 """Extended Ubus client with specific OpenWrt functionality."""
 
 import logging
+import json
 
 from .Ubus import Ubus
 from .Ubus.interface import PreparedCall
@@ -19,7 +20,8 @@ from .const import (
     API_SUBSYS_QMODEM,
     API_SUBSYS_MWAN3,
     API_SUBSYS_RC,
-    API_SUBSYS_WIRELESS,
+    API_SUBSYS_WIRELESS, # network.wireless falla y lo ejecuto en el router y uso  file read /tmp/ubus/network_wireless_status
+    API_METHOD_BOARD,
     API_METHOD_BOARD,
     API_METHOD_GET,
     API_METHOD_GET_AP,
@@ -53,16 +55,24 @@ class ExtendedUbus(Ubus):
             if self._interface_to_ssid_cache:
                 return self._interface_to_ssid_cache
 
-            # Get wireless status
-            result = await self.api_call(API_RPC_CALL, API_SUBSYS_WIRELESS, "status", {})
+#            # Get wireless status
+#            result = await self.api_call(API_RPC_CALL, API_SUBSYS_WIRELESS, "status", {})
+#
+#            if not result:
+#                return {}
 
-            if not result:
+            #result = await self.api_call(API_RPC_CALL, API_SUBSYS_WIRELESS, "status", {})
+            result = await self.file_read("/tmp/ubus/network_wireless_status")
+            _LOGGER.debug("Estado inalámbrico de la API: %s", result)
+            if not result or "data" not in result:
                 return {}
 
+            # Parse the JSON string from the 'data' field
+            wireless_data = json.loads(result["data"])
             mapping = {}
 
             # Parse the wireless status to build interface->SSID mapping
-            for radio_name, radio_data in result.items():
+            for radio_name, radio_data in wireless_data.items():
                 if isinstance(radio_data, dict) and "interfaces" in radio_data:
                     for interface in radio_data["interfaces"]:
                         ifname = interface.get("ifname")
