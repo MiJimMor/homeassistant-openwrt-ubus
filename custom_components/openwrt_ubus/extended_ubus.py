@@ -557,6 +557,9 @@ class ExtendedUbus(Ubus):
         if not ap_devices:
             return {}
 
+        # Get the interface to SSID mapping first
+        interface_to_ssid = await self.get_interface_to_ssid_mapping()
+
         # Build API calls for all AP devices
         prepared_calls: list[PreparedCall] = []
         for ap_device in ap_devices:
@@ -572,6 +575,7 @@ class ExtendedUbus(Ubus):
 
         # Execute batch call
         results = await self.batch_call(prepared_calls)
+        _LOGGER.debug("get_all_ap_info_batch results: %r", results)
         if not results:
             return {}
 
@@ -580,16 +584,37 @@ class ExtendedUbus(Ubus):
         for ap_device, result in results:
             try:
                 if isinstance(result, dict) and result:
-                    # Only add AP if it has an SSID
-                    if (ap_info := self.parse_ap_info(result, ap_device)) and ap_info.get("ssid"):
+                    # Parse AP info
+                    ap_info = self.parse_ap_info(result, ap_device)
+                    
+                    # If SSID is not in iwinfo result, try to get it from the mapping
+                    if not ap_info.get("ssid") and ap_device in interface_to_ssid:
+                        ap_info["ssid"] = interface_to_ssid[ap_device]
+                        _LOGGER.debug(
+                            "Injected SSID %s for device %s from interface mapping",
+                            ap_info["ssid"],
+                            ap_device,
+                        )
+                    ap_info["device_name"] = ap_info["ssid"]
+                    _LOGGER.debug(
+                        "Set device_name to SSID %s for device %s (no mode available)",
+                        ap_info["ssid"],
+                        ap_device,
+                    )                          
+                    # Only add AP if it has an SSID (either from iwinfo or mapping)
+                    if ap_info.get("ssid"):
                         ap_info_data[ap_device] = ap_info
                         _LOGGER.debug(
                             "AP info fetched for device %s with SSID %s",
                             ap_device,
                             ap_info.get("ssid"),
+#                            ap_info.get("device_name"),
                         )
                     else:
-                        _LOGGER.debug("Skipping AP device %s - no SSID found", ap_device)
+                        _LOGGER.debug(
+                            "Skipping AP device %s - no SSID found in iwinfo or mapping",
+                            ap_device,
+                        )
                 elif isinstance(result, Exception):
                     _LOGGER.error("Exception in batch call for %s: %s", ap_device, result)
                     continue
@@ -598,6 +623,32 @@ class ExtendedUbus(Ubus):
                     continue
             except (IndexError, KeyError) as exc:
                 _LOGGER.debug("Error parsing AP info for %s: %s", ap_device, exc)
+
+        return ap_info_data
+#
+#        # Process results
+#        ap_info_data = {}
+#        for ap_device, result in results:
+#            try:
+#                if isinstance(result, dict) and result:
+#                    # Only add AP if it has an SSID
+#                    if (ap_info := self.parse_ap_info(result, ap_device)) and ap_info.get("ssid"):
+#                        ap_info_data[ap_device] = ap_info
+#                        _LOGGER.debug(
+#                            "AP info fetched for device %s with SSID %s",
+#                            ap_device,
+#                            ap_info.get("ssid"),
+#                        )
+#                    else:
+#                        _LOGGER.debug("Skipping AP device %s - no SSID found", ap_device)
+#                elif isinstance(result, Exception):
+#                    _LOGGER.error("Exception in batch call for %s: %s", ap_device, result)
+#                    continue
+#                else:
+#                    _LOGGER.debug("Unexpected result type for %s: %s", ap_device, type(result))
+#                    continue
+#            except (IndexError, KeyError) as exc:
+#                _LOGGER.debug("Error parsing AP info for %s: %s", ap_device, exc)
 
         return ap_info_data
 
