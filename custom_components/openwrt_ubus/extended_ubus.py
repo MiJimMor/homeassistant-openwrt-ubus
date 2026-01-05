@@ -22,7 +22,6 @@ from .const import (
     API_SUBSYS_RC,
     API_SUBSYS_WIRELESS, # network.wireless falla y lo ejecuto en el router y uso  file read /tmp/ubus/network_wireless_status
     API_METHOD_BOARD,
-    API_METHOD_BOARD,
     API_METHOD_GET,
     API_METHOD_GET_AP,
     API_METHOD_GET_CLIENTS,
@@ -649,9 +648,9 @@ class ExtendedUbus(Ubus):
 #                    continue
 #            except (IndexError, KeyError) as exc:
 #                _LOGGER.debug("Error parsing AP info for %s: %s", ap_device, exc)
-
-        return ap_info_data
-
+#
+#        return ap_info_data
+#
     # RC (service control) specific methods
     async def list_services(self, include_status=False):
         """List available services, optionally including their status."""
