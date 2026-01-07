@@ -29,6 +29,7 @@ from .sensors import (
     ap_sensor,
     eth_sensor,
     mwan3_sensor,
+    connected_devices_sensor,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -70,6 +71,12 @@ SENSOR_MODULES = [
         "config_key": CONF_ENABLE_ETH_SENSORS,
         "default": DEFAULT_ENABLE_ETH_SENSORS,
         "name": "eth_sensor",
+    },
+    {
+        "module": connected_devices_sensor,
+        "config_key": CONF_ENABLE_STA_SENSORS,  # Uses same config as STA sensors
+        "default": DEFAULT_ENABLE_STA_SENSORS,
+        "name": "connected_devices_sensor",
     },
 ]
 
